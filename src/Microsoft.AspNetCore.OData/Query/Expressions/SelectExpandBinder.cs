@@ -27,8 +27,7 @@ namespace Microsoft.AspNetCore.OData.Query.Expressions
         private ODataQueryContext _context;
         private IEdmModel _model;
         private ODataQuerySettings _settings;
-        private string _modelID;
-
+        
         public SelectExpandBinder(ODataQuerySettings settings, ODataQueryContext context)
         {
             Contract.Assert(settings != null);
@@ -38,7 +37,6 @@ namespace Microsoft.AspNetCore.OData.Query.Expressions
 
             _context = context;
             _model = _context.Model;
-            _modelID = ModelContainer.GetModelID(_model);
             _settings = settings;
         }
 
@@ -278,12 +276,11 @@ namespace Microsoft.AspNetCore.OData.Query.Expressions
             bool isTypeNamePropertySet = false;
             bool isContainerPropertySet = false;
 
-            // Initialize property 'ModelID' on the wrapper class.
-            // source = new Wrapper { ModelID = 'some-guid-id' }
-            wrapperProperty = wrapperType.GetProperty("ModelID");
-            wrapperPropertyValueExpression = _settings.EnableConstantParameterization ?
-                LinqParameterContainer.Parameterize(typeof(string), _modelID) :
-                Expression.Constant(_modelID);
+            // Initialize property 'Model' on the wrapper class.
+            // source = new Wrapper { Model = 'some-edm-model' }
+            wrapperProperty = wrapperType.GetProperty("Model");
+            // Always parameterize as EntityFramework does not let you inject non primitive constant values (like IEdmModel).
+            wrapperPropertyValueExpression = LinqParameterContainer.Parameterize(typeof(IEdmModel), _model);
             wrapperTypeMemberAssignments.Add(Expression.Bind(wrapperProperty, wrapperPropertyValueExpression));
 
             if (IsSelectAll(selectExpandClause))

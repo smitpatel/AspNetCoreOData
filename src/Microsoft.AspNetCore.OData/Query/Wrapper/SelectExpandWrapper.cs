@@ -26,9 +26,9 @@ namespace Microsoft.AspNetCore.OData.Query.Wrapper
         public PropertyContainer Container { get; set; }
 
         /// <summary>
-        /// An ID to uniquely identify the model in the <see cref="ModelContainer"/>.
+        /// The model associated with the request.
         /// </summary>
-        public string ModelID { get; set; }
+        public IEdmModel Model { get; set; }
 
         /// <inheritdoc />
         public object UntypedInstance { get; set; }
@@ -46,11 +46,9 @@ namespace Microsoft.AspNetCore.OData.Query.Wrapper
         /// <inheritdoc />
         public IEdmTypeReference GetEdmType()
         {
-            IEdmModel model = GetModel();
-
             if (InstanceType != null)
             {
-                IEdmStructuredType structuredType = model.FindType(InstanceType) as IEdmStructuredType;
+                IEdmStructuredType structuredType = Model.FindType(InstanceType) as IEdmStructuredType;
                 IEdmEntityType entityType = structuredType as IEdmEntityType;
 
                 if (entityType != null)
@@ -63,7 +61,7 @@ namespace Microsoft.AspNetCore.OData.Query.Wrapper
 
             Type elementType = GetElementType();
 
-            return model.GetTypeMappingCache().GetEdmType(elementType, model);
+            return Model.GetTypeMappingCache().GetEdmType(elementType, Model);
         }
 
         /// <inheritdoc />
@@ -84,16 +82,15 @@ namespace Microsoft.AspNetCore.OData.Query.Wrapper
             if (UseInstanceForProperties && UntypedInstance != null)
             {
                 IEdmTypeReference edmTypeReference = GetEdmType();
-                IEdmModel model = GetModel();
                 if (edmTypeReference is IEdmComplexTypeReference)
                 {
                     _typedEdmStructuredObject = _typedEdmStructuredObject ??
-                        new TypedEdmComplexObject(UntypedInstance, edmTypeReference as IEdmComplexTypeReference, model);
+                        new TypedEdmComplexObject(UntypedInstance, edmTypeReference as IEdmComplexTypeReference, Model);
                 }
                 else
                 {
                     _typedEdmStructuredObject = _typedEdmStructuredObject ??
-                        new TypedEdmEntityObject(UntypedInstance, edmTypeReference as IEdmEntityTypeReference, model);
+                        new TypedEdmEntityObject(UntypedInstance, edmTypeReference as IEdmEntityTypeReference, Model);
                 }
 
                 return _typedEdmStructuredObject.TryGetPropertyValue(propertyName, out value);
@@ -118,7 +115,7 @@ namespace Microsoft.AspNetCore.OData.Query.Wrapper
             Dictionary<string, object> dictionary = new Dictionary<string, object>();
             IEdmStructuredType type = GetEdmType().AsStructured().StructuredDefinition();
 
-            IPropertyMapper mapper = mapperProvider(GetModel(), type);
+            IPropertyMapper mapper = mapperProvider(Model, type);
             if (mapper == null)
             {
                 throw Error.InvalidOperation(SRResources.InvalidPropertyMapper, typeof(IPropertyMapper).FullName,
@@ -153,12 +150,5 @@ namespace Microsoft.AspNetCore.OData.Query.Wrapper
         }
 
         protected abstract Type GetElementType();
-
-        private IEdmModel GetModel()
-        {
-            Contract.Assert(ModelID != null);
-
-            return ModelContainer.GetModel(ModelID);
-        }
     }
 }
